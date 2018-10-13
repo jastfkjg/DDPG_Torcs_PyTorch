@@ -13,7 +13,7 @@ The detailed explanation of original TORCS for AI research is given by Daniele L
 # How to Run?
 
 ```
-git clone https://github.com/yanpanlau/DDPG-Keras-Torcs.git
+git clone https://github.com/jastfkjg/DDPG_Torcs_PyTorch.git
 cd DDPG-Torcs-PyTorch
 python ddpg.py
 
