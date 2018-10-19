@@ -2,6 +2,9 @@ from gym_torcs import TorcsEnv
 import numpy as np 
 import random 
 import argparse
+import torch
+import torchvision
+import torch.nn as nn
 
 from ReplayBuffer import ReplayBuffer
 from ActorNetwork import ActorNetwork
@@ -37,6 +40,7 @@ def palygame(train_indicator = 0):
 
     #Torch GPU optimization
     #to do
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 
     env = TorcsEnv(vision=vision, throttle=True, gear_change=False)
