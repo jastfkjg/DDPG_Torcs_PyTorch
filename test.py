@@ -13,15 +13,15 @@ from OU import OU
 
 state_size = 29
 action_size = 3
-LRA = 0.0001
-LRC = 0.001
+LRA = 0.01
+LRC = 0.05
 BUFFER_SIZE = 1000  #to change
 BATCH_SIZE = 32
-GAMMA = 0.99
-EXPLORE = 10000
+GAMMA = 0.95
+EXPLORE = 1000
 epsilon = 1
 train_indicator = 1    # train or not
-TAU = 0.001
+TAU = 0.01
 
 VISION = False
 
@@ -29,11 +29,23 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 OU = OU()
 
+def init_weights(m):
+    if type(m) == torch.nn.Linear:
+        torch.nn.init.normal_(m.weight, 0, 1e-4)
+        m.bias.data.fill_(0.0)
+
+
 actor = ActorNetwork(state_size).to(device)
+actor.apply(init_weights)
 critic = CriticNetwork(state_size, action_size).to(device)
+#critic.apply(init_weights)
 buff = ReplayBuffer(BUFFER_SIZE)
 target_actor = ActorNetwork(state_size).to(device)
 target_critic = CriticNetwork(state_size, action_size).to(device)
+target_actor.load_state_dict(actor.state_dict())
+target_actor.eval()
+target_critic.load_state_dict(critic.state_dict())
+target_critic.eval()
 
 criterion_critic = torch.nn.MSELoss(reduction='sum')
 
@@ -46,8 +58,6 @@ env = TorcsEnv(vision=VISION, throttle=True, gear_change=False)
 torch.set_default_tensor_type('torch.FloatTensor')
 
 for i in range(2000):
-
-    print(str(i) + "-th episode starts")
 
     if np.mod(i, 3) == 0:
         ob = env.reset(relaunch = True)
@@ -67,6 +77,11 @@ for i in range(2000):
         noise_t[0][0] = train_indicator * max(epsilon, 0) * OU.function(a_t_original[0][0], 0.0, 0.60, 0.30)
         noise_t[0][1] = train_indicator * max(epsilon, 0) * OU.function(a_t_original[0][1], 0.5, 1.00, 0.10)
         noise_t[0][2] = train_indicator * max(epsilon, 0) * OU.function(a_t_original[0][2], -0.1, 1.00, 0.05)
+
+        #stochastic brake
+        if random.random() <= 0.1:
+            print("apply the brake")
+            noise_t[0][2] = train_indicator * max(epsilon, 0) * OU.function(a_t_original[0][2], 0.2, 1.00, 0.10)
         
         a_t[0][0] = a_t_original[0][0] + noise_t[0][0]
         a_t[0][1] = a_t_original[0][1] + noise_t[0][1]
@@ -107,20 +122,22 @@ for i in range(2000):
             optimizer_critic.step()
 
             a_for_grad = actor(states)
-            a_for_grad.requires_grad_()
+            a_for_grad.requires_grad_()    #enables the requires_grad of a_for_grad
             q_values_for_grad = critic(states, a_for_grad)
             critic.zero_grad()
             q_values_for_grad.sum().backward()
-            grads = a_for_grad.grad        #a_for_grad is not a Variable, Variable input to varibale output?
+            grads = a_for_grad.grad        #a_for_grad is not a Variable
+            print(grads)
 
             act = actor(states)
             actor.zero_grad()
-            act.sum().backward(grads)
+            act.sum().backward(-grads)
             optimizer_actor.step()
 
             #soft update for target network
             #actor_params = list(actor.parameters())
             #critic_params = list(critic.parameters())
+            print("soft updates target network")
             new_actor_state_dict = collections.OrderedDict()
             new_critic_state_dict = collections.OrderedDict()
             for var_name in target_actor.state_dict():
@@ -132,11 +149,12 @@ for i in range(2000):
             target_critic.load_state_dict(new_critic_state_dict)
         
         s_t = s_t1
+        print("---Episode ", i , "  Action:", a_t, "  Reward:", r_t, "  Loss:", loss)
 
         if done:
             break
 
-    if np.mod(1, 3) == 0:
+    if np.mod(i, 3) == 0:
         if (train_indicator):
             print("saving model")
             torch.save(actor.state_dict(), 'actormodel.pth')

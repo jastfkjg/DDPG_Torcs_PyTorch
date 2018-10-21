@@ -15,8 +15,11 @@ class ActorNetwork(nn.Module):
         self.fc1 = nn.Linear(state_size, HIDDEN1_UNITS)
         self.fc2 = nn.Linear(HIDDEN1_UNITS, HIDDEN2_UNITS)
         self.steering = nn.Linear(HIDDEN2_UNITS, 1)
+        nn.init.normal_(self.steering.weight, 0, 1e-4)
         self.acceleration = nn.Linear(HIDDEN2_UNITS, 1)
+        nn.init.normal_(self.acceleration.weight, 0, 1e-4)
         self.brake = nn.Linear(HIDDEN2_UNITS, 1)
+        nn.init.normal_(self.brake.weight, 0, 1e-4)
 
 
     def forward(self, x):
