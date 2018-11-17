@@ -14,7 +14,7 @@ The detailed explanation of original TORCS for AI research is given by Daniele L
 
 ```
 git clone https://github.com/jastfkjg/DDPG_Torcs_PyTorch.git
-cd DDPG-Torcs-PyTorch
+cd DDPG_Torcs_PyTorch
 python test.py
 
 ```
