@@ -13,15 +13,15 @@ from OU import OU
 
 state_size = 29
 action_size = 3
-LRA = 0.01
-LRC = 0.05
-BUFFER_SIZE = 1000  #to change
+LRA = 0.0001
+LRC = 0.001
+BUFFER_SIZE = 100000  #to change
 BATCH_SIZE = 32
 GAMMA = 0.95
-EXPLORE = 1000
+EXPLORE = 100000.
 epsilon = 1
 train_indicator = 1    # train or not
-TAU = 0.01
+TAU = 0.001
 
 VISION = False
 
@@ -38,8 +38,22 @@ def init_weights(m):
 actor = ActorNetwork(state_size).to(device)
 actor.apply(init_weights)
 critic = CriticNetwork(state_size, action_size).to(device)
+
+#load model
+print("loading model")
+try:
+
+    actor.load_state_dict(torch.load('actormodel.pth'))
+    actor.eval()
+    critic.load_state_dict(torch.load('criticmodel.pth'))
+    critic.eval()
+    print("model load successfully")
+except:
+    print("cannot find the model")
+
 #critic.apply(init_weights)
 buff = ReplayBuffer(BUFFER_SIZE)
+
 target_actor = ActorNetwork(state_size).to(device)
 target_critic = CriticNetwork(state_size, action_size).to(device)
 target_actor.load_state_dict(actor.state_dict())
@@ -66,7 +80,7 @@ for i in range(2000):
 
     s_t = np.hstack((ob.angle, ob.track, ob.trackPos, ob.speedX, ob.speedY, ob.speedZ, ob.wheelSpinVel/100.0, ob.rpm))
     
-    for j in range(1000):
+    for j in range(100000):
         loss = 0
         epsilon -= 1.0 / EXPLORE
         a_t = np.zeros([1, action_size])
@@ -118,20 +132,25 @@ for i in range(2000):
             q_values = critic(states, actions)
             loss = criterion_critic(y_t, q_values)  
             optimizer_critic.zero_grad()
-            loss.backward()                         ##for param in critic.parameters(): param.grad.data.clamp(-1, 1)
+            loss.backward(retain_graph=True)                         ##for param in critic.parameters(): param.grad.data.clamp(-1, 1)
             optimizer_critic.step()
 
             a_for_grad = actor(states)
             a_for_grad.requires_grad_()    #enables the requires_grad of a_for_grad
             q_values_for_grad = critic(states, a_for_grad)
             critic.zero_grad()
-            q_values_for_grad.sum().backward()
-            grads = a_for_grad.grad        #a_for_grad is not a Variable
-            print(grads)
+            q_sum = q_values_for_grad.sum()
+            q_sum.backward(retain_graph=True)
+
+            grads = torch.autograd.grad(q_sum, a_for_grad) #a_for_grad is not a leaf node  
+            #grads is a tuple, while grads[0] is what we want
+
+            #grads[0] = -grads[0]
+            #print(grads)   
 
             act = actor(states)
             actor.zero_grad()
-            act.sum().backward(-grads)
+            act.backward(-grads[0])
             optimizer_actor.step()
 
             #soft update for target network

@@ -15,6 +15,14 @@ The detailed explanation of original TORCS for AI research is given by Daniele L
 ```
 git clone https://github.com/jastfkjg/DDPG_Torcs_PyTorch.git
 cd DDPG-Torcs-PyTorch
-python ddpg.py
+python test.py
 
 ```
+
+# training result
+
+You can train the model both on cpu or gpu.
+
+After 100 episodes (about one hour) the car can have a good performance.
+
+If you want to change the reward function, see gym_torcs.py .
