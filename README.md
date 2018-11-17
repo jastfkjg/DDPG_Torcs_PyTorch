@@ -19,7 +19,7 @@ python test.py
 
 ```
 
-# training result
+# training
 
 You can train the model both on cpu or gpu.
 
