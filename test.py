@@ -5,6 +5,7 @@ import random
 from gym_torcs import TorcsEnv
 import argparse
 import collections
+#import ipdb
 
 from ReplayBuffer import ReplayBuffer
 from ActorNetwork import ActorNetwork
@@ -69,7 +70,10 @@ optimizer_critic = torch.optim.Adam(critic.parameters(), lr=LRC)
 #env environment
 env = TorcsEnv(vision=VISION, throttle=True, gear_change=False)
 
-torch.set_default_tensor_type('torch.FloatTensor')
+if torch.cuda.is_available():
+    torch.set_default_tensor_type('torch.cuda.FloatTensor')
+else:
+    torch.set_default_tensor_type('torch.FloatTensor') 
 
 for i in range(2000):
 
@@ -85,9 +89,15 @@ for i in range(2000):
         epsilon -= 1.0 / EXPLORE
         a_t = np.zeros([1, action_size])
         noise_t = np.zeros([1, action_size])
-
+        #ipdb.set_trace() 
         a_t_original = actor(torch.tensor(s_t.reshape(1, s_t.shape[0]), device=device).float())
-        a_t_original = a_t_original.data.numpy()
+
+        if torch.cuda.is_available():
+            a_t_original = a_t_original.data.cpu().numpy()
+        else:
+            a_t_original = a_t_original.data.numpy()
+        #print(type(a_t_original[0][0]))
+
         noise_t[0][0] = train_indicator * max(epsilon, 0) * OU.function(a_t_original[0][0], 0.0, 0.60, 0.30)
         noise_t[0][1] = train_indicator * max(epsilon, 0) * OU.function(a_t_original[0][1], 0.5, 1.00, 0.10)
         noise_t[0][2] = train_indicator * max(epsilon, 0) * OU.function(a_t_original[0][2], -0.1, 1.00, 0.05)
